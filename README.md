@@ -5,3 +5,8 @@ The LISTER toolbox is an open-source software framework designed to generate hig
 
 # Acknowledgement
 This work was carried out by Surrey AI Imaging Ltd funded by the European Space Agency under the programme of "Studies for Lunar Surface Software Development" (2024–2025).
+
+We would like to extend our gratitude to the developers of three GitHub repositories that have been instrumental in the success of this project. Specifically, we have integrated network architectures into the LISTER toolbox from the following repositories:
+1. NeWCRFs by aliyun: https://github.com/aliyun/NeWCRFs
+2. Depthformer by ashutosh1807: https://github.com/ashutosh1807/Depthformer/tree/main
+3. DenseDepth by ialhashim: https://github.com/ialhashim/DenseDepth
