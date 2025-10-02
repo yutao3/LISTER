@@ -2,7 +2,7 @@
 
 **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**
 
-LISTER is a research-oriented open-source toolbox for reconstructing lunar surface topography from LROC NAC images. It integrates photogrammetric DTMs, LOLA data, and modern diffusion-based depth/normal estimation networks (Marigold E2E-FT and Stable Diffusion E2E-FT), providing an automated and modular framework for generating high-resolution digital terrain models (DTMs) and surface products.
+LISTER is a research-oriented open-source toolbox for reconstructing lunar surface topography from LROC NAC images. It takes either a photogrammetric DTM or the LOLA DTM as reference, and provide an automated and modular framework for generating high-resolution digital terrain models (DTMs) using integrated pre-trained Monocular Depth Estimation networks and an end-to-end reconstruction pipeline.
 
 ---
 
@@ -10,9 +10,9 @@ LISTER is a research-oriented open-source toolbox for reconstructing lunar surfa
 
 - End-to-end automated pipelines for generating DTMs and surface reconstructions  
 - Support for both **high-resolution photogrammetric DTMs** and **LOLA DTMs** as reference  
-- Integration of diffusion-based monocular depth/normal estimation models  
+- Integration of dense u-net, vision transformers and diffusion-based monocular depth estimation models  
 - Scripts for downloading, preprocessing, and converting raw LROC NAC images  
-- Tools for brightness adjustment, quality filtering, mosaicking, and reprojection  
+- Tools for brightness adjustment, quality filtering, georeferencing, mosaicking, and reprojection  
 - Modular design allowing standalone use of helper scripts  
 
 ---
