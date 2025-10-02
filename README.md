@@ -10,319 +10,291 @@ LISTER is a research-oriented open-source toolbox for reconstructing lunar surfa
 
 - End-to-end automated pipelines for generating DTMs and surface reconstructions  
 - Support for both **high-resolution photogrammetric DTMs** and **LOLA DTMs** as reference  
-- Integration of **dense U-Net**, **vision transformers** (NeWCRFs, DepthFormer) and **diffusion-based** monocular depth estimation models (Marigold E2E-FT, Stable Diffusion E2E-FT)  
-- Scripts for **downloading**, **preprocessing**, and **converting** raw LROC NAC images  
-- Tools for **brightness adjustment**, **quality filtering**, **georeferencing**, **mosaicking**, and **reprojection**  
-- Modular design allowing standalone use of helper scripts and validation utilities  
+- Integration of dense u-net, vision transformers and diffusion-based monocular depth estimation models  
+- Scripts for downloading, preprocessing, and converting raw LROC NAC images  
+- Tools for brightness adjustment, quality filtering, georeferencing, mosaicking, and reprojection  
+- Modular design allowing standalone use of helper scripts  
 
 ---
 
-## Table of Contents
+## Repository structure (key scripts)
 
-1. [Requirements](#requirements)  
-2. [Installation](#installation)  
-3. [Models & Weights](#models--weights)  
-4. [Data Preparation](#data-preparation)  
-5. [Usage](#usage)  
-   - [Automated Pipelines](#automated-pipelines)  
-   - [Helper & Utility Scripts](#helper--utility-scripts)  
-   - [Validation Scripts](#validation-scripts)  
-6. [Outputs](#outputs)  
-7. [Limitations & Notes](#limitations--notes)  
-8. [Acknowledgements](#acknowledgements)  
-9. [License](#license)  
-10. [Citation](#citation)  
-11. [Contact](#contact)
+- `LISTER_autoDTM.py` – main single-scale pipeline (photogrammetric DTM as reference)  
+- `LISTER_autoDTM_MSP.py` – multi‑scale pyramid wrapper calling `LISTER_autoDTM.py` from coarse→fine  
+- `prepare_geotiff_lroc_nac.py` – convert a raw LROC NAC EDR `.IMG` into an 8‑bit GeoTIFF via ISIS3 + GDAL  
+- `pre_adjust_brightness.py` – shadow‑aware brightness/tone adjustment for GeoTIFFs  
+- `check_low_quality_robust.py` – quality screening of GeoTIFFs in a folder  
+- `get_latest_lroc_nac_list_and_merge.py` – build/refresh a master list of NAC EDR URLs (INDEX.TAB → one URL per line)  
+- `get_lroc_nac.py` – download specific NAC EDRs using the master URL list  
+- `compare2dtm.py` – ref/target DTM comparison across smoothing widths (RMSE & SSIM)  
+- `quick_validation.py` – fast visual/statistical comparison of multiple DTMs over the common footprint  
+- `cal_stat.py` – quick SSIM/RMSE between two images (utility)
 
----
-
-## Requirements
-
-- **Python**: 3.8 or newer (3.10+ recommended)  
-- **Core Python libraries**: `numpy`, `scipy`, `Pillow`, `opencv-python`, `shapely`, `pyproj`, `affine`, `pandas`, `tqdm`, `requests`, `pyyaml`  
-- **Geospatial**:  
-  - `gdal` (Python bindings) and GDAL command-line tools (`gdalwarp`, `gdal_translate`) — recommended  
-  - or/and `rasterio` for reading/writing rasters where appropriate  
-- **Deep learning**:  
-  - `torch`, `torchvision` (GPU strongly recommended)  
-  - `diffusers`, `transformers`, `huggingface-hub` (for diffusion models)  
-  - `timm`, `einops`, `kornia` (for transformer/backbone utilities)  
-- **External tools (recommended)**:  
-  - **NASA Ames Stereo Pipeline (ASP)** for robust mosaicking and DEM operations: <https://github.com/NeoGeographyToolkit/StereoPipeline>  
-- **Hardware**: CUDA-capable GPU with sufficient VRAM for diffusion-based inference and tiling. Ample disk space (tens of GB) for raw inputs, intermediates, and model checkpoints.
-
-> **GDAL on Python** can be system-dependent. Confirm installation with:
-> ```bash
-> gdalinfo --version
-> python -c "from osgeo import gdal; print(gdal.__version__)"
-> ```
+> Note: `LISTER_autoDTM_MSP_light.py` is a simplified variant of the MSP wrapper and is intentionally not documented below.
 
 ---
 
 ## Installation
 
-Clone this repository:
-```bash
-git clone https://github.com/yutao3/LISTER.git
-cd LISTER
-```
+### 1) System dependencies
 
-Install Python dependencies (preferably inside a virtual environment):
+- **GDAL** (≥ 3.4) – command‑line tools and Python bindings  
+- **NASA Ames Stereo Pipeline (ASP)** – used for **mosaicing** predicted tiles: `dem_mosaic`  
+  - Repo: <https://github.com/NeoGeographyToolkit/StereoPipeline>
+- **USGS ISIS3** – for processing raw LROC NAC EDRs into projected cubes/GeoTIFFs  
+- **Python 3.9+** is recommended
+
+Ensure `gdal_translate`, `gdalinfo`, `dem_mosaic`, and ISIS3 apps (e.g., `lronac2isis`, `lronaccal`, `spiceinit`, `lronacecho`, `cam2map`) are in your `PATH`.
+
+### 2) Python environment
+
 ```bash
-python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-Install system packages as needed (e.g., GDAL, ASP). Ensure `gdalwarp`, `gdal_translate`, and (optionally) ASP tools like `dem_mosaic` are on your `PATH`.
+> If the `GDAL` wheel fails on your platform, install GDAL via your OS package manager first (ensuring the Python bindings match your interpreter), then `pip install rasterio` etc.
 
----
+### 3) Pretrained weights
 
-## Models & Weights
+All network weights and the diffusion networks for **Marigold E2EFT** and **Stable Diffusion E2EFT** must be downloaded **separately** due to size limits. Use the Google Drive folder:
 
-Pre-trained weights and diffusion networks are **not** included due to size limits. Download them from Google Drive and place them under a local directory such as `weights/` (or any path you configure).
+- **Weights & models:** <https://drive.google.com/drive/folders/1uQZtQKEiKxk3WJoZn2wMLVHRkegJQU6G?usp=drive_link>
 
-- **Google Drive (all weights & diffusion networks)**  
-  <https://drive.google.com/drive/folders/1uQZtQKEiKxk3WJoZn2wMLVHRkegJQU6G?usp=drive_link>
-
-Included/expected families of models:
-- **Diffusion-based MDE** (based on VCI’s `diffusion-e2e-ft`): *Marigold E2E‑FT*, *Stable Diffusion E2E‑FT*  
-- **Dense U-Net** (DenseDepth-derived)  
-- **Vision Transformers**: *NeWCRFs*, *DepthFormer*
-
-> Ensure your command-line options (below) point to the correct model folders and checkpoint filenames. Run `--help` on the scripts to see the exact argument names supported in this repository.
-
----
-
-## Data Preparation
-
-1. **Download LROC NAC** (if needed):  
-   Use the provided utilities to fetch NAC EDRs by ID and to keep a current manifest.
-   - `get_latest_lroc_nac_list_and_merge.py` — fetch latest NAC image list & merge metadata  
-   - `get_lroc_nac.py` — download NAC EDRs by image ID(s)
-
-2. **Convert EDR → GeoTIFF**:  
-   - `prepare_geotiff_lroc_nac.py` — converts raw LROC NAC EDR to GeoTIFF suitable for downstream steps.  
-     Example:
-     ```bash
-     python prepare_geotiff_lroc_nac.py \
-       --input /path/to/EDR/ \
-       --output /path/to/nac_geotiffs/
-     ```
-
-3. **Brightness & Quality (optional but recommended)**:  
-   - `pre_adjust_brightness.py` — normalise exposure for more stable inference  
-   - `check_low_quality_robust.py` — flag/remove problematic images before processing
-
-4. **Reference DTM**: choose one of:  
-   - **High-resolution photogrammetric DTM** (preferred for best local accuracy)  
-   - **LOLA DTM** (for broad coverage; used by MSP pipelines)
-
-> **Projection maps** are provided (`lroc_equator.map`, `lroc_northpole.map`, `lroc_southpole.map`) for appropriate map-projection handling near equator/poles.
+Place the downloaded files under an accessible location and point `-w/--weights` (and any model‑specific paths) accordingly when running LISTER.
 
 ---
 
 ## Usage
 
-### Automated Pipelines
+### A. End-to-end pipeline (single-scale)
 
-> The following examples illustrate the typical command patterns. For the **full and authoritative list of flags supported by your local scripts**, run `--help` on each script (e.g., `python LISTER_autoDTM.py --help`).
+`LISTER_autoDTM.py` is the main script for running the pipeline with a reference **photogrammetric DTM**.
 
-#### 1) Photogrammetric DTM as reference (recommended)
-Main entry point: **`LISTER_autoDTM.py`**
+**CLI:**  
+```
+python LISTER_autoDTM.py -i INPUT.tif -r REF_DTM.tif -o OUTPUT_DTM.tif     -m MODEL_ID -w WEIGHTS.pth -a /path/to/ASP/bin [options]
+```
 
+**Arguments (exact, from the script):**  
+- `-i, --input` **(required)**: Input **8‑bit 1‑channel GeoTIFF**.  
+- `-r, --ref` **(required)**: Reference DTM GeoTIFF.  
+- `-o, --output` **(required)**: Output DTM GeoTIFF path.  
+- `-m, --model` **(required)**: Model ID for inference (e.g., `D`, `V`, `N`, …).  
+- `-w, --weights` **(required)**: Pretrained model weights (`.pth`).  
+- `-a, --asp` *(default: `~/Downloads/ASP/bin`)*: Path to ASP bin (expects `dem_mosaic`).  
+- `-t, --tmp` *(default: `data_tmp`)*: Temporary working directory.
+
+**Expert options:**  
+- `--overlap` *(int, default **280**)*: Tile overlap (pixels).  
+- `--valid_threshold` *(int, default **20**)*: Pixels ≥ threshold counted as valid (helps discard low‑texture/shadow).  
+- `--max_nodata_pixels` *(int, default **3000**)*: Drop tiles still containing ≥ this many NoData pixels post‑inpaint.  
+- `--ndv` *(float, default **-3.40282265508890445e+38**)*: NoData value for georeferenced tiles.  
+- `--scale` *(float, default **2.75**)*: Gaussian scale factor used in post‑processing (LP/HP merge).  
+- `--inpaint` *(flag)*: Enable inpainting for partially valid tiles.  
+- `--inpaint_threshold` *(float, default **0.1**)*: Minimum valid‑pixel fraction to allow inpainting.  
+- `--inpaint_method` `telea|ns` *(default **telea**)*: OpenCV inpainting algorithm.  
+- `--fill_smoothing` *(int, default **1**)*: Smoothing iterations in FillNodata.
+
+> Tip: The script accepts `--ndv -3.4e+38` or `--ndv=-3.4e+38`; both are handled internally.
+
+**Example:**  
 ```bash
-python LISTER_autoDTM.py \
-  --input-dir /path/to/nac_geotiffs \
-  --dtm /path/to/highres_photogrammetric_dtm.tif \
-  --weights-dir /path/to/weights \
-  --model {denseunet|newcrfs|depthformer|marigold|sd_e2eft} \
-  --tile-size 1024 --overlap 64 \
-  --device cuda:0 \
-  --out /path/to/output_dir
-```
-Typical options you may find useful:
-- `--input-dir`: directory with prepared NAC GeoTIFFs (after EDR→GeoTIFF conversion)  
-- `--dtm`: high-res photogrammetric DTM to register outputs against  
-- `--weights-dir`: directory containing the downloaded model checkpoints  
-- `--model`: which pre-trained model family to use for MDE/normal inference  
-- `--tile-size`, `--overlap`: tiling parameters for large images  
-- `--device`: CPU or CUDA device string  
-- `--out`: output directory
-
-#### 2) LOLA DTM as reference
-Main entry points: **`LISTER_autoDTM_MSP.py`** and **`LISTER_autoDTM_MSP_light.py`**
-
-```bash
-python LISTER_autoDTM_MSP.py \
-  --input-dir /path/to/nac_geotiffs \
-  --lola-dtm /path/to/LOLA_global.tif \
-  --weights-dir /path/to/weights \
-  --model {denseunet|newcrfs|depthformer|marigold|sd_e2eft} \
-  --tile-size 1024 --overlap 64 \
-  --device cuda:0 \
-  --out /path/to/output_dir
-```
-
-The *light* variant typically reduces compute/memory or applies simplified post-processing:
-```bash
-python LISTER_autoDTM_MSP_light.py \
-  --input-dir /path/to/nac_geotiffs \
-  --lola-dtm /path/to/LOLA_global.tif \
-  --weights-dir /path/to/weights \
-  --model sd_e2eft \
-  --tile-size 768 --overlap 48 \
-  --device cuda:0 \
-  --out /path/to/output_dir
-```
-
-> Some pipelines optionally use **NASA Ames Stereo Pipeline** tools (e.g., `dem_mosaic`) to mosaic tiles robustly. Ensure ASP is installed and visible on your PATH if mosaicking via ASP is requested.
-
-### Helper & Utility Scripts
-
-The following scripts can be used independently or are invoked internally by the automated pipelines. Use `--help` on each to see all options supported by your local clone.
-
-- **`get_latest_lroc_nac_list_and_merge.py`**  
-  Fetch or update the NAC image list and merge metadata fields into a single reference file (CSV/JSON).  
-  ```bash
-  python get_latest_lroc_nac_list_and_merge.py \
-    --out manifest.csv
-  ```
-
-- **`get_lroc_nac.py`**  
-  Download LROC NAC images (EDR) by passing one or more image IDs or a list file.  
-  ```bash
-  python get_lroc_nac.py \
-    --ids M1234567890RE M1234567891LE \
-    --out /data/LROC_EDR/
-  # or
-  python get_lroc_nac.py --list ids.txt --out /data/LROC_EDR/
-  ```
-
-- **`prepare_geotiff_lroc_nac.py`**  
-  Convert raw EDRs to processing-ready GeoTIFFs; handles map-projection and metadata.  
-  ```bash
-  python prepare_geotiff_lroc_nac.py \
-    --input /data/LROC_EDR/ \
-    --output /data/nac_geotiffs/ \
-    --projection-map lroc_equator.map    # or lroc_northpole.map / lroc_southpole.map
-  ```
-
-- **`pre_adjust_brightness.py`**  
-  Apply brightness normalisation to NAC images.  
-  ```bash
-  python pre_adjust_brightness.py \
-    --input /data/nac_geotiffs/ \
-    --output /data/nac_geotiffs_bright/
-  ```
-
-- **`check_low_quality_robust.py`**  
-  Perform robust quality checks; optionally write a filtered list or flags.  
-  ```bash
-  python check_low_quality_robust.py \
-    --input /data/nac_geotiffs/ \
-    --out quality_report.csv \
-    --min-contrast 0.05
-  ```
-
-- **`georeference.py`**, **`make_tiles.py`**, **`inference.py`**, **`postprocess*.py`**, **`full_chain.py`**  
-  Lower-level building blocks used within the automated pipelines. For advanced use or custom experiments, inspect `--help` on each to run them step-by-step (tiling → inference → post-processing → georeference → mosaic).
-
-### Validation Scripts
-
-The `validation/` folder contains utilities to evaluate/compare generated DTMs against references and to compute statistics, profiles, or maps. Exact script names and options may vary; common patterns look like:
-
-```bash
-# Example: compute elevation error statistics vs. a reference DTM
-python validation/validate_against_reference.py \
-  --pred /path/to/LISTER_DTM.tif \
-  --ref  /path/to/reference_DTM.tif \
-  --mask /path/to/valid_mask.tif \
-  --out  validation_report.json
-```
-
-```bash
-# Example: generate hillshade/contours/quality overlays for quick inspection
-python validation/visualise_products.py \
-  --dtm /path/to/LISTER_DTM.tif \
-  --image /path/to/NAC_image.tif \
-  --out /path/to/figures/
-```
-
-> Please run `--help` on each script in `validation/` to see all supported arguments in your copy of the repository.
-
----
-
-## Outputs
-
-Typical outputs include:
-- **High-resolution DTM** in GeoTIFF aligned to the chosen reference (photogrammetric or LOLA)  
-- **Surface normal maps** or intermediate depth tiles (depending on the model used)  
-- **Mosaics** of tiles (optionally via **NASA ASP** tools for robust blending)  
-- **Quality maps**, logs, and optional diagnostic artefacts  
-- **Intermediate files** (brightness-adjusted inputs, tiles, masks) which you may delete after validation to save space
-
-Directory structure example:
-```
-outputs/
-  dtm/
-  normals/
-  tiles/
-  logs/
-  qc/
+python LISTER_autoDTM.py   -i ./nac/PAIR_8BIT.tif   -r ./dtm/photogrammetric_ref.tif   -o ./out/PAIR_dtm.tif   -m V -w ./weights/ViT_model.pth   -a ~/miniconda3/envs/asp/bin   --overlap 280 --scale 2.75 --inpaint --inpaint_threshold 0.1
 ```
 
 ---
 
-## Limitations & Notes
+### B. LOLA‑referenced multi‑scale pipeline
 
-- **GPU recommended**: Diffusion-based models are expensive to run on CPU.  
-- **Registration assumptions**: The approach assumes reasonable alignment between NAC imagery and the chosen reference DTM; severe mis-registrations degrade results.  
-- **Polar handling**: Use appropriate projection maps near the poles (`lroc_northpole.map`, `lroc_southpole.map`).  
-- **Large data volumes**: Expect large intermediates; clean up when finished.  
-- **Exact CLI flags**: Minor differences may exist between clones/branches. Use `--help` on each script to confirm arguments for your environment.
+`LISTER_autoDTM_MSP.py` wraps `LISTER_autoDTM.py` in a **coarse→fine** multi‑scale pyramid. Use this when the **LOLA DTM** is the reference, or whenever robust large‑area processing is desired. The wrapper automatically downsamples the input, forwards the flags to `LISTER_autoDTM.py`, and progressively tightens the post‑processing scale.
+
+**CLI:**  
+```
+python LISTER_autoDTM_MSP.py -i INPUT.tif -r REF_DTM.tif -o OUTPUT_DTM.tif     -m MODEL_ID -w WEIGHTS.pth -a /path/to/ASP/bin [--num_of_scales N] [other expert flags]
+```
+
+**Arguments (exact, from the script):**  
+- Inherited core flags: `-i/--input`, `-r/--ref`, `-o/--output`, `-m/--model`, `-w/--weights`, `-a/--asp`, `-t/--tmp`.  
+- Expert flags forwarded to each level: `--overlap`, `--valid_threshold`, `--max_nodata_pixels`, `--ndv`, `--scale`, `--inpaint`, `--inpaint_threshold`, `--inpaint_method`, `--fill_smoothing`.  
+- MSP specific: `--num_of_scales` *(int, default **3**)*: number of pyramid levels.
+
+The wrapper chooses a coarsest level that is **not coarser than ~3× the reference DTM resolution** and evenly spaces scales up to full‑res. At level *k*, it uses `post_scale = (N - k) * base_scale`.
+
+**Example:**  
+```bash
+python LISTER_autoDTM_MSP.py   -i ./nac/PAIR_8BIT.tif   -r ./dtm/LOLA_64ppd.tif   -o ./out/PAIR_dtm_lola_msp.tif   -m D -w ./weights/densedepth.pth   --num_of_scales 3 --overlap 280 --inpaint --inpaint_threshold 0.1
+```
+
+---
+
+### C. Pre‑processing & utilities
+
+#### 1) Convert LROC NAC EDR → 8‑bit GeoTIFF
+
+`prepare_geotiff_lroc_nac.py` (ISIS3 + GDAL)  
+
+**CLI:**  
+```
+python prepare_geotiff_lroc_nac.py input.IMG input_projection.map
+```
+This runs: `lronac2isis → spiceinit → lronaccal → lronacecho → cam2map → gdal_translate → 8‑bit scale`. Produces `input_8BIT.tif`.  (Intermediate `.cub/.tif` removed.)
+
+Source: fileciteturn1file19 / fileciteturn1file15
+
+#### 2) Brightness / tone adjustment (shadow‑aware)
+
+`pre_adjust_brightness.py`  
+
+**CLI:**  
+```
+python pre_adjust_brightness.py INPUT.tif OUTPUT.tif -m {clahe,agc,sigmoid,mask_gamma}   [--clip-limit 4.0] [--tile-size 64] [--gain 10.0] [--cutoff 0.5]   [--shadow-quantile 0.25] [--shadow-high-quantile 0.45] [--gamma 0.5] [--sigma 15.0]
+```
+Examples:
+```bash
+# Local shadow brightening
+python pre_adjust_brightness.py in.tif out.tif -m mask_gamma   --shadow-quantile 0.25 --shadow-high-quantile 0.45 --gamma 0.45 --sigma 20
+
+# Global sigmoid
+python pre_adjust_brightness.py in.tif out_sigmoid.tif -m sigmoid --gain 8 --cutoff 0.45
+```
+Source: fileciteturn2file7 / fileciteturn2file9
+
+#### 3) Quality screening of GeoTIFFs
+
+`check_low_quality_robust.py`  
+
+**CLI:**  
+```
+python check_low_quality_robust.py <input_directory> <output_text_file>
+```
+The script downsamples large images, computes four metrics (local STD, entropy, histogram spread, Laplacian mean), performs **adaptive** low/mid/high classification, and writes a tab‑separated report with per‑image metrics + averages.  
+Source: fileciteturn2file4 / fileciteturn2file5
+
+#### 4) Build a master list of NAC EDR download URLs
+
+`get_latest_lroc_nac_list_and_merge.py` (standard library only)  
+
+**CLI:**  
+```
+python get_latest_lroc_nac_list_and_merge.py OUTPUT_DIR [--mirror MIRROR_BASE]
+```
+Downloads available `INDEX/INDEX.TAB` files under each `LRO-L-LROC-2-EDR-V1.0/volume`, then merges the second column to one URL per line at `OUTPUT_DIR/all_lroc_nac_urls.txt`.  
+Source: fileciteturn2file17 / fileciteturn3file4
+
+#### 5) Download selected LROC NAC EDRs
+
+`get_lroc_nac.py` (standard library only)  
+
+**CLI:**  
+```
+python get_lroc_nac.py all_lroc_nac_urls.txt WANTED_IDS.txt OUTPUT_DIR
+# or
+python get_lroc_nac.py all_lroc_nac_urls.txt M1181811415LE OUTPUT_DIR
+```
+`WANTED_IDS.txt` contains one ID per line (with or without `.IMG`; `LE/RE` suffix inferred).  
+Source: fileciteturn2file12 / fileciteturn2file6
+
+#### 6) Compare two DTMs on a grid of smoothing widths
+
+`compare2dtm.py`  
+
+**CLI:**  
+```
+python compare2dtm.py REF_DTM.tif TAR_DTM.tif MAX_FILTER_WIDTH
+```
+Downsamples the reference to target resolution, crops to overlap, applies boxcar smoothing widths (up to `MAX_FILTER_WIDTH`), computes **RMSE** and **SSIM** per block, and saves `result.txt` and `result.png`.  
+Source: fileciteturn2file10 / fileciteturn2file2 / fileciteturn2file3
+
+#### 7) Quick validation over overlap region (visual + stats)
+
+`quick_validation.py`  
+
+**CLI:**  
+```
+python quick_validation.py OUTPUT_DIR INPUT_IMAGE_8BIT.tif REF_DTM.tif DTM1.tif [DTM2.tif ...]
+```
+- Finds the **overlap** across all inputs; resamples all to the highest available resolution.  
+- If the overlap is huge, takes a random 10–20% sub‑window for speed.  
+- Produces side‑by‑side figures with scale bars and summary stats.  
+Source: fileciteturn2file11 / fileciteturn3file13
+
+#### 8) Simple SSIM/RMSE between two single‑band images
+
+`cal_stat.py`  
+
+**CLI:**  
+```
+python cal_stat.py IMAGE_A.tif IMAGE_B.tif
+```
+Prints SSIM and RMSE. (OpenCV/Scikit‑Image required.)  
+Source: fileciteturn2file16
+
+---
+
+## Data preparation tips
+
+1. Convert raw NAC EDRs to projected **8‑bit** GeoTIFFs with `prepare_geotiff_lroc_nac.py`.  
+2. Optionally run `pre_adjust_brightness.py` to lift shadows and improve texture before inference.  
+3. Screen poor‑quality scenes using `check_low_quality_robust.py`.  
+4. Ensure the reference DTM (photogrammetric or LOLA) **overlaps** your image AOI and has valid georeferencing.  
+5. When using MSP, start with LOLA (global) or a coarse photogrammetric DTM and let the wrapper refine through scales.
+
+---
+
+## Models and third‑party components
+
+LISTER integrates or supports pretrained monocular depth backbones:
+
+- **DenseDepth (Dense U‑Net):** <https://github.com/ialhashim/DenseDepth>  
+- **NeWCRFs (Vision Transformers):** <https://github.com/aliyun/NeWCRFs>  
+- **DepthFormer (Vision Transformers):** <https://github.com/ashutosh1807/Depthformer>  
+- **Diffusion E2E Finetuning (Marigold & Stable Diffusion):** base code derived from <https://github.com/VisualComputingInstitute/diffusion-e2e-ft>
+
+Tiling mosaics use **NASA Ames Stereo Pipeline** (`dem_mosaic`): <https://github.com/NeoGeographyToolkit/StereoPipeline>.
+
+> **Weights & checkpoints**: Download from the provided Google Drive (see above). Please ensure you comply with the original licenses of each upstream project when using or redistributing models and code.
 
 ---
 
 ## Acknowledgements
 
-This repository integrates or builds upon the following works and toolkits. Please consult their licenses before use:
-
-- **DenseDepth (Dense U-Net)** — <https://github.com/ialhashim/DenseDepth>  
-- **NeWCRFs (Vision Transformers for MDE)** — <https://github.com/aliyun/NeWCRFs>  
-- **DepthFormer (Vision Transformers for MDE)** — <https://github.com/ashutosh1807/Depthformer>  
-- **Diffusion E2E-FT (Marigold & Stable Diffusion E2E-FT)** — <https://github.com/VisualComputingInstitute/diffusion-e2e-ft>  
-- **NASA Ames Stereo Pipeline (mosaicking/DEM tools)** — <https://github.com/NeoGeographyToolkit/StereoPipeline>  
-- **GDAL, Rasterio, PyTorch, diffusers, transformers, timm, einops**, and the broader open-source geospatial & ML ecosystem.
-
-> **Funding acknowledgement**: The work was carried out under a programme of and funded by the **European Space Agency (ESA)**.
-
----
-
-## License
-
-Unless otherwise noted, this repository is released under the **Apache-2.0 License** (see `LICENSE`).  
-External models, checkpoints, and third-party code are under their respective licenses.
+This work was carried out under a programme of and funded by the **European Space Agency (ESA)**.  
+We acknowledge the authors and maintainers of: DenseDepth, NeWCRFs, DepthFormer, the VCI Diffusion E2E‑FT repository (for Marigold and Stable Diffusion E2EFT), and the NASA Ames Stereo Pipeline.
 
 ---
 
 ## Citation
 
-If you use **LISTER** in your research, please cite:
-```
-Tao, Y. et al. (2025).
-LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction.
-GitHub: https://github.com/yutao3/LISTER
-```
+If you use LISTER in your research, please cite:
 
-If you make use of specific integrated models or toolkits, please also cite the corresponding original works (DenseDepth, NeWCRFs, DepthFormer, diffusion-e2e-ft, NASA ASP, etc.).
+> Y. ***et al.***, **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**, 2025. (Add conference/journal details if applicable.)
+
+A BibTeX entry will be added when the paper/preprint is available.
 
 ---
 
-## Contact
+## License
 
-- Maintainer: **Yu Tao**  
-- Email: **yu.tao@saiil.co.uk**  
-- GitHub: **https://github.com/yutao3**
+This repository’s license is provided in `LICENSE` (if absent, the authors retain all rights).  
+Third‑party components retain their original licenses. Please consult each linked project for details.
 
-Contributions are welcome — please open issues or pull requests. For substantial changes, kindly discuss via an issue first.
+---
+
+## Troubleshooting
+
+- **`gdal`/`rasterio` import errors** → ensure system GDAL is installed and version‑matched with your Python interpreter.  
+- **`dem_mosaic: command not found`** → add ASP `bin/` to `PATH` or pass `-a /path/to/ASP/bin`.  
+- **Empty/black outputs** → try `pre_adjust_brightness.py -m mask_gamma` before inference; adjust `--valid_threshold`.  
+- **Seams in mosaics** → increase `--overlap` and/or adjust `--scale`; try MSP wrapper for robustness.  
+- **Large scenes** → use `LISTER_autoDTM_MSP.py` with `--num_of_scales 3` and sufficient disk in `--tmp`.
+
+---
+
+## Development notes
+
+- Python 3.9+ recommended.  
+- Scripts print progress and create intermediate artifacts under `--tmp`. These are cleaned upon success.  
+- Contributions (issues/PRs) are welcome.
