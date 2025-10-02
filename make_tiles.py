@@ -8,7 +8,7 @@ import os
 import sys
 
 # SMALL IMAGE USE overlap = 150, LARGE IMAGE USE 120, USE 350 TO FULLY ELIMINATE TILING ARTEFACT
-def make_tiles(ori_filepath, img_folder, geo_folder, overlap = 250, patch_width = 640, patch_height = 480):    
+def make_tiles(ori_filepath, img_folder, geo_folder, overlap = 280, patch_width = 640, patch_height = 480):    
     if os.path.isfile(ori_filepath):
         ori_ds = gdal.Open(ori_filepath)
         im_height = ori_ds.RasterYSize
@@ -21,10 +21,11 @@ def make_tiles(ori_filepath, img_folder, geo_folder, overlap = 250, patch_width 
                 # crop ORI
                 crop_ds = gdal.Translate('temp.tif', ori_ds, srcWin = [j, i, patch_width, patch_height])              
                 crop_ori = crop_ds.ReadAsArray()
-                # check for nodata in crop_dtm and crop_ori
-                if ((crop_ori.size - np.count_nonzero(crop_ori)) >= 6400): # USE FOR HIRISE
-                #if ((crop_ori.size - np.count_nonzero(crop_ori)) >= 1200): # USE FOR CASSIS
-                #if (crop_ori == 0).any():
+                
+                if np.sum(crop_ori >= 20) <= 0.85 * crop_ori.size:
+                    os.system('rm temp.tif')
+                    continue
+                elif ((crop_ori.size - np.count_nonzero(crop_ori)) >= 3000):
                     os.system('rm temp.tif')
                     continue
                 else:

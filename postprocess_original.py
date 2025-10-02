@@ -5,8 +5,6 @@ from osgeo import gdal_array
 import numpy as np
 import sys
 
-# not used in LISTER_auto or auto_MSP pipelines but still used in the original pipeline.
-
 def postprocess(input_ref, input_relative, output_final):
     # Read input files
     data = gdal.Open(input_relative)
@@ -37,11 +35,12 @@ def postprocess(input_ref, input_relative, output_final):
         return
 
     # Scaling input_relative
-    #stats = srcband.GetStatistics(True, True)
-    #stat_min = stats[0]
-    #stat_max = stats[1]
+    stats = srcband.GetStatistics(True, True)
+    stat_min = stats[0]
+    stat_max = stats[1]
 
-    data_scaled = gdal.Translate('', data, format='MEM', scaleParams=[[0, 1, -1.25, 1.25]])
+    data_scaled = gdal.Translate('', data, format='MEM', scaleParams=[[0, 1, stat_min - 1.25, stat_max + 1.25]])
+    # use 0.175 for HiRISE, 1.75 for HRSC
 
     # Difference calculation
     diff = gdal_array.OpenArray(data_scaled.GetRasterBand(1).ReadAsArray() - refdata_resampled.GetRasterBand(1).ReadAsArray())

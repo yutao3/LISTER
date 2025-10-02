@@ -122,13 +122,13 @@ def full_chain(input_path, ref_path, output_path, asp_path, model_id, weights_pa
     
 def main():
     parser = argparse.ArgumentParser(description="Process images.")
-    parser.add_argument("--input", "-i", type=str, default="test_data/003252_1425-ORI.tif", help="filepath of the input image")
-    parser.add_argument("--ref", "-r", type=str, default="test_data/003252_1425-PDS.tif", help="filepath of the reference DTM")
-    parser.add_argument("--output", "-o", type=str, default="test_data/003252_1425-DTM.tif", help="filepath of the output DTM")
+    parser.add_argument("--input", "-i", type=str, help="filepath of the input image")
+    parser.add_argument("--ref", "-r", type=str, help="filepath of the reference DTM")
+    parser.add_argument("--output", "-o", type=str, help="filepath of the output DTM")
     parser.add_argument("--asp", "-a", type=str, default="~/Downloads/ASP/bin", help="path to the ASP bin folder")
     parser.add_argument("--model", "-m", type=str, default="D", help="D for DenseNet-161-U-Net; V for ViT-AB-U-Net; N for NW-FC-CRF")
-    parser.add_argument("--weights", "-w", type=str, help="path to pretrained model")
-    parser.add_argument("--tmp", "-t", type=str, help="path to a temporary working directory that can be used to store metadata")
+    parser.add_argument("--weights", "-w", type=str, default="pre-trained-weights/moon-D.pth", help="path to pretrained model")
+    parser.add_argument("--tmp", "-t", type=str, default="data_tmp", help="path to a temporary working directory that can be used to store metadata")
 
     args = parser.parse_args()
     full_chain(args.input, args.ref, args.output, args.asp, args.model, args.weights, args.tmp)
