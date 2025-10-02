@@ -25,7 +25,7 @@ The NASA Ames Stereo Pipeline (ASP) is used for image and DEM mosaicing in the L
 
 3. **Examples:**
    ```bash
-   python full_chain.py --input data/input_image/xxx.tif --ref data/ref_dtm/yyy.tif --output data/output_dtm/zzz.tif --asp ~/Downloads/ASP/bin --model D --weights pre-trained-weights/mars-D.pth --tmp data/tmp_working_dir
+   
 
 
 # Acknowledgement
