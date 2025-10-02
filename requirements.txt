@@ -1,12 +1,35 @@
+# Core scientific & utilities
 numpy
 scipy
-Pillow
+pillow
 opencv-python
+pandas
+tqdm
+requests
+pyyaml
+
+# Geometry / geospatial
 shapely
 pyproj
 affine
 rasterio
+
+# GDAL (installing wheels may be system-dependent; you may prefer OS packages)
+# If pip install fails, please install GDAL via your OS/package manager and the Python bindings separately.
+gdal
+
+# Deep learning & vision
 torch
 torchvision
+timm
+einops
+kornia
+
+# Diffusion & Hugging Face stack
 diffusers
 transformers
+huggingface-hub
+
+# Optional visualisation
+matplotlib
+scikit-image
