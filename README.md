@@ -142,8 +142,6 @@ python prepare_geotiff_lroc_nac.py input.IMG input_projection.map
 ```
 This runs: `lronac2isis → spiceinit → lronaccal → lronacecho → cam2map → gdal_translate → 8‑bit scale`. Produces `input_8BIT.tif`.  (Intermediate `.cub/.tif` removed.)
 
-Source: fileciteturn1file19 / fileciteturn1file15
-
 #### 2) Brightness / tone adjustment (shadow‑aware)
 
 `pre_adjust_brightness.py`  
@@ -160,7 +158,6 @@ python pre_adjust_brightness.py in.tif out.tif -m mask_gamma   --shadow-quantile
 # Global sigmoid
 python pre_adjust_brightness.py in.tif out_sigmoid.tif -m sigmoid --gain 8 --cutoff 0.45
 ```
-Source: fileciteturn2file7 / fileciteturn2file9
 
 #### 3) Quality screening of GeoTIFFs
 
@@ -171,7 +168,6 @@ Source: fileciteturn2file7 / fileciteturn2file9
 python check_low_quality_robust.py <input_directory> <output_text_file>
 ```
 The script downsamples large images, computes four metrics (local STD, entropy, histogram spread, Laplacian mean), performs **adaptive** low/mid/high classification, and writes a tab‑separated report with per‑image metrics + averages.  
-Source: fileciteturn2file4 / fileciteturn2file5
 
 #### 4) Build a master list of NAC EDR download URLs
 
@@ -182,7 +178,6 @@ Source: fileciteturn2file4 / fileciteturn2file5
 python get_latest_lroc_nac_list_and_merge.py OUTPUT_DIR [--mirror MIRROR_BASE]
 ```
 Downloads available `INDEX/INDEX.TAB` files under each `LRO-L-LROC-2-EDR-V1.0/volume`, then merges the second column to one URL per line at `OUTPUT_DIR/all_lroc_nac_urls.txt`.  
-Source: fileciteturn2file17 / fileciteturn3file4
 
 #### 5) Download selected LROC NAC EDRs
 
@@ -195,7 +190,6 @@ python get_lroc_nac.py all_lroc_nac_urls.txt WANTED_IDS.txt OUTPUT_DIR
 python get_lroc_nac.py all_lroc_nac_urls.txt M1181811415LE OUTPUT_DIR
 ```
 `WANTED_IDS.txt` contains one ID per line (with or without `.IMG`; `LE/RE` suffix inferred).  
-Source: fileciteturn2file12 / fileciteturn2file6
 
 #### 6) Compare two DTMs on a grid of smoothing widths
 
@@ -206,7 +200,6 @@ Source: fileciteturn2file12 / fileciteturn2file6
 python compare2dtm.py REF_DTM.tif TAR_DTM.tif MAX_FILTER_WIDTH
 ```
 Downsamples the reference to target resolution, crops to overlap, applies boxcar smoothing widths (up to `MAX_FILTER_WIDTH`), computes **RMSE** and **SSIM** per block, and saves `result.txt` and `result.png`.  
-Source: fileciteturn2file10 / fileciteturn2file2 / fileciteturn2file3
 
 #### 7) Quick validation over overlap region (visual + stats)
 
@@ -219,7 +212,6 @@ python quick_validation.py OUTPUT_DIR INPUT_IMAGE_8BIT.tif REF_DTM.tif DTM1.tif 
 - Finds the **overlap** across all inputs; resamples all to the highest available resolution.  
 - If the overlap is huge, takes a random 10–20% sub‑window for speed.  
 - Produces side‑by‑side figures with scale bars and summary stats.  
-Source: fileciteturn2file11 / fileciteturn3file13
 
 #### 8) Simple SSIM/RMSE between two single‑band images
 
@@ -230,7 +222,6 @@ Source: fileciteturn2file11 / fileciteturn3file13
 python cal_stat.py IMAGE_A.tif IMAGE_B.tif
 ```
 Prints SSIM and RMSE. (OpenCV/Scikit‑Image required.)  
-Source: fileciteturn2file16
 
 ---
 
