@@ -45,7 +45,7 @@ LISTER is a research-oriented open-source toolbox for reconstructing lunar surfa
 - **Deep learning**:  
   `torch`, `torchvision`, `diffusers`, `transformers`  
 - **Other**:  
-  Internet access (for downloading LROC NAC unless you already have them), sufficient disk space (tens of GB for data + models), and a CUDA-capable GPU (strongly recommended for inference).  
+  Internet access (for downloading LROC NAC unless you already have them), sufficient disk space (~30 GB for pre-trained models), and a CUDA-capable GPU (strongly recommended for inference).  
 
 ---
 
