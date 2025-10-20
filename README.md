@@ -252,7 +252,7 @@ Tiling mosaics use **NASA Ames Stereo Pipeline** (`dem_mosaic`): <https://github
 
 ## Acknowledgements
 
-This work was carried out under a programme of and funded by the **European Space Agency (ESA)**.  
+This work was carried out under a programme of and funded by the **European Space Agency (ESA)** LISTER project.  
 We acknowledge the authors and maintainers of: DenseDepth, NeWCRFs, DepthFormer, the VCI Diffusion E2E‑FT repository (for Marigold and Stable Diffusion E2EFT), and the NASA Ames Stereo Pipeline.
 
 ---
@@ -261,7 +261,7 @@ We acknowledge the authors and maintainers of: DenseDepth, NeWCRFs, DepthFormer,
 
 If you use LISTER in your research, please cite:
 
-> Y. ***et al.***, **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**, 2025. (Add conference/journal details if applicable.)
+> Tao ***et al.***, **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**, 2025. (in preparation)
 
 A BibTeX entry will be added when the paper/preprint is available.
 
