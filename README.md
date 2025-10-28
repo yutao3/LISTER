@@ -269,8 +269,14 @@ A BibTeX entry will be added when the paper/preprint is available.
 
 ## License
 
-This repository’s license is provided in `LICENSE` (if absent, the authors retain all rights).  
-Third‑party components retain their original licenses. Please consult each linked project for details.
+This repository is dual-licensed under:
+
+Apache License 2.0 (a permissive open-source license), and
+ESA Software Community License – Weak Copyleft (as required by Section 4.2 of the ESA contract).
+
+You may choose to use this software under either license.
+Both license texts are provided in the repository (LICENSE.Apache-2.0 and LICENSE.ESA-Community-Weak-Copyleft).
+Third-party components retain their original licenses; please refer to the respective linked projects for details.
 
 ---
 
