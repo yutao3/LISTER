@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument('--ndv', type=float,
                         default=-3.40282265508890445e+38,
                         help='NoData value for output tiles')
-    parser.add_argument('--scale', type=float, default=2.75,
+    parser.add_argument('--scale', type=float, default=3.75,
                         help='Guassian scale factor for postprocessing')
     parser.add_argument('--inpaint', action='store_true',
                         help='Enable image inpainting on near-valid tiles')
