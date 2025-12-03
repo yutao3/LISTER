@@ -12,7 +12,7 @@ Expert flags:
   --valid_threshold     Pixel intensities ≥ threshold is considered valid (e.g. 20 for the shadowed region)
   --max_nodata_pixels   Maximum allowed nodata pixels per tile (default: 3000)
   --ndv                 NoData value for georeferenced tiles (default: -3.4e+38)
-  --scale               Guassin decomposition scale factor for postprocessing (default: 2.75)
+  --scale               Guassin decomposition scale factor for postprocessing (default: 3.75)
   --inpaint             Enable nodata inpainting for partial tiles (default: False)
   --inpaint_threshold   Min fraction of valid pixels for inpainting (default: 0.2)
   --inpaint_method      NS or TELEA (opencv)
@@ -559,7 +559,7 @@ def main():
                         help="Max nodata pixels allowed [expert]")
     parser.add_argument("--ndv", type=float, default=-3.40282265508890445e+38,
                         help="NoData value for output tiles [expert]")
-    parser.add_argument("--scale", type=float, default=2.75,
+    parser.add_argument("--scale", type=float, default=3.75,
                         help="Guassian scale factor for postprocessing [expert]")
     parser.add_argument("--inpaint", action="store_true",
                         help="[expert] enable image inpainting on near-valid tiles")
