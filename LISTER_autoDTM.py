@@ -53,6 +53,24 @@ import cv2
 from natsort import natsorted
 
 
+def _python_split_listfile(all_txt_path: str, out_prefix: str, lines_per_file: int = 200) -> None:
+    """Split a text file into multiple files with a fixed number of lines per file.
+    Output files use the prefix `out_prefix` followed by a zero-padded index (e.g., list000, list001)."""
+    with open(all_txt_path, "r") as f:
+        lines = [ln.strip() for ln in f if ln.strip()]
+    if not lines:
+        # Create an empty file to keep downstream robust
+        open(f"{out_prefix}000", "w").close()
+        return
+    idx = 0
+    for start in range(0, len(lines), lines_per_file):
+        chunk = lines[start:start + lines_per_file]
+        out_path = f"{out_prefix}{idx:03d}"
+        with open(out_path, "w") as fo:
+            fo.write("\n".join(chunk) + "\n")
+        idx += 1
+
+
 def validate_geotiff(input_tif, ref_tif):
     """
     Ensure both input and reference files are valid GeoTIFFs with projection metadata.
@@ -372,8 +390,14 @@ def full_chain(input_tif, ref_tif, output_tif, asp_bin, model_id,
     if not os.path.isfile(weights_path):
         print(f"[ERROR] Weights file missing: {weights_path}")
         sys.exit(1)
-    cmd = f"python inference.py --model {model_id} --weights {weights_path} --data {dirs['crop']}/"
-    if subprocess.run(cmd, shell=True).returncode != 0:
+    cmd = [
+        "python",
+        "inference.py",
+        "--model", model_id,
+        "--weights", weights_path,
+        "--data", f"{dirs['crop']}/",
+    ]
+    if subprocess.run(cmd).returncode != 0:
         print("[ERROR] Inference execution failed.")
         sys.exit(1)
     result_files = glob.glob(f"{dirs['crop']}/*_result.tif")
@@ -430,8 +454,9 @@ def full_chain(input_tif, ref_tif, output_tif, asp_bin, model_id,
     print("[Step 5] Preparing ASP list files...")
     all_txt = os.path.join(tmp_dir, 'all.txt')
     with open(all_txt, 'w') as f:
-        for fpath in natsorted(final_tiles): f.write(fpath + '\n')
-    subprocess.run(f"split -l 200 {all_txt} {tmp_dir}/list", shell=True)
+        for fpath in natsorted(final_tiles):
+            f.write(fpath + '\n')
+    _python_split_listfile(all_txt, f"{tmp_dir}/list")
     print(f"[Step 5 Done] List files in {tmp_dir}.")
 
     # 6) ASP mosaicing
@@ -442,12 +467,22 @@ def full_chain(input_tif, ref_tif, output_tif, asp_bin, model_id,
         print(f"[ERROR] dem_mosaic not found at {dem_exec}")
         sys.exit(1)
     for listfile in glob.glob(f"{tmp_dir}/list*"):
-        cmd = f"{dem_exec} -l {listfile} -o {listfile}-mosaic --erode-length 12 --threads 8"
-        if subprocess.run(cmd, shell=True).returncode != 0:
+        cmd = [
+            dem_exec,
+            "-l", listfile,
+            "-o", f"{listfile}-mosaic",
+            "--erode-length", "12",
+            "--threads", "8",
+        ]
+        if subprocess.run(cmd).returncode != 0:
             print(f"[ERROR] dem_mosaic failed on {listfile}")
             sys.exit(1)
-    cmd = f"{dem_exec} {tmp_dir}/list*.tif -o {tmp_dir}/final --threads 8"
-    if subprocess.run(cmd, shell=True).returncode != 0:
+    final_inputs = natsorted(glob.glob(f"{tmp_dir}/list*.tif"))
+    if not final_inputs:
+        print("[ERROR] No intermediate mosaic tiles found for final dem_mosaic.")
+        sys.exit(1)
+    cmd = [dem_exec, *final_inputs, "-o", f"{tmp_dir}/final", "--threads", "8"]
+    if subprocess.run(cmd).returncode != 0:
         print("[ERROR] Final dem_mosaic step failed.")
         sys.exit(1)
     timers['mosaic'] = time.time() - start
