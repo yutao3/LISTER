@@ -2,14 +2,14 @@
 
 **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**
 
-LISTER is a research-oriented open-source toolbox for reconstructing lunar surface topography from LROC NAC images. It takes either a photogrammetric DTM or the LOLA DTM as reference, and provides an automated and modular framework for generating high-resolution digital terrain models (DTMs) using integrated pre-trained Monocular Depth Estimation networks and an end-to-end reconstruction pipeline.
+LISTER is a research-oriented open-source toolbox for reconstructing lunar (and Mars) surface topography from LROC NAC (and MRO HiRISE/CTX) images. It takes either a photogrammetric DTM or the LiDAR DTM as reference, and provides an automated and modular framework for generating high-resolution digital terrain models (DTMs) using integrated pre-trained Monocular Depth Estimation networks and an end-to-end reconstruction pipeline.
 
 ---
 
 ## Features
 
 - End-to-end automated pipelines for generating DTMs and surface reconstructions  
-- Support for both **high-resolution photogrammetric DTMs** and **LOLA DTMs** as reference  
+- Support for both **high-resolution photogrammetric DTMs** and **LOLA/MOLA DTMs** as reference  
 - Integration of dense u-net, vision transformers and diffusion-based monocular depth estimation models  
 - Scripts for downloading, preprocessing, and converting raw LROC NAC images  
 - Tools for brightness adjustment, quality filtering, georeferencing, mosaicking, and reprojection  
@@ -261,7 +261,7 @@ We acknowledge the authors and maintainers of: DenseDepth, NeWCRFs, DepthFormer,
 
 If you use LISTER in your research, please cite:
 
-> Tao ***et al.***, **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**, 2025. (in preparation)
+> Tao et al., **LISTER: A Pre-trained Open-Source Toolbox for Lunar Monocular Image to Surface Topography Estimation and Reconstruction**, 2026. (in preparation)
 
 A BibTeX entry will be added when the paper/preprint is available.
 
